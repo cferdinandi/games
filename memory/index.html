@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Memory</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0">
+
+	<link href="https://fonts.googleapis.com/css?family=PT+Serif:400,400i,700,700i" rel="stylesheet">
+	<style type="text/css">
+		body {
+			font-family: Georgia, serif;
+			margin: 0 auto;
+			max-width: 60em;
+			width: 88%;
+		}
+
+		.fonts-loaded body {
+			font-family: "PT Serif", serif;
+		}
+
+		#memory {
+			display: grid;
+			grid-template-columns: repeat(4, 1fr);
+			grid-template-rows: repeat(4, 1fr);
+			grid-column-gap: 0.5em;
+			grid-row-gap: 0.5em;
+
+			[data-card="0"] { grid-area: 1 / 1 / 2 / 2; }
+			[data-card="1"] { grid-area: 1 / 2 / 2 / 3; }
+			[data-card="2"] { grid-area: 1 / 3 / 2 / 4; }
+			[data-card="3"] { grid-area: 1 / 4 / 2 / 5; }
+			[data-card="4"] { grid-area: 2 / 1 / 3 / 2; }
+			[data-card="5"] { grid-area: 2 / 2 / 3 / 3; }
+			[data-card="6"] { grid-area: 2 / 3 / 3 / 4; }
+			[data-card="7"] { grid-area: 2 / 4 / 3 / 5; }
+			[data-card="8"] { grid-area: 3 / 1 / 4 / 2; }
+			[data-card="9"] { grid-area: 3 / 2 / 4 / 3; }
+			[data-card="10"] { grid-area: 3 / 3 / 4 / 4; }
+			[data-card="11"] { grid-area: 3 / 4 / 4 / 5; }
+			[data-card="12"] { grid-area: 4 / 1 / 5 / 2; }
+			[data-card="13"] { grid-area: 4 / 2 / 5 / 3; }
+			[data-card="14"] { grid-area: 4 / 3 / 5 / 4; }
+			[data-card="15"] { grid-area: 4 / 4 / 5 / 5; }
+		}
+
+		#memory button {
+			background-color: #e5e5e5;
+			border: 1px solid #808080;
+			height: 20vh;
+			max-height: 12em;
+		}
+
+		#memory .flipped {
+			background-color: #f7f7f7;
+			border-color: #e5e5e5;
+		}
+
+		#memory .matched {
+			border: 2px solid green;
+		}
+
+		img {
+			height: auto;
+			max-width: 100%;
+		}
+
+		#play-again {
+			float: right;
+		}
+
+		footer {
+			padding: 1em 0;
+		}
+	</style>
+</head>
+<body>
+
+	<h1>Memory</h1>
+
+	<p><strong id="matched" aria-live="polite">0 matched</strong> <button id="play-again">Play Again</button></p>
+	<div id="memory">Loading...</div>
+
+	<footer>
+		<p><em>Icons by <a href="https://thenounproject.com/term/door/311732/">Jamie Dickinson</a>, <a href="https://thenounproject.com/term/monster/184225/">Nicky Knicky</a>, <a href="https://thenounproject.com/term/monster/1510400/">Alvaro Cabrera</a>, <a href="https://thenounproject.com/term/monster/28460/">Eliricon</a>, <a href="https://thenounproject.com/term/monster/82823/">April Yang</a>, <a href="https://thenounproject.com/term/monster/1062009/">tk66</a>, <a href="https://thenounproject.com/term/monster/24990/">Alex WaZa</a>, <a href="https://thenounproject.com/term/monster/37212/">Husein Aziz</a>, and <a href="https://thenounproject.com/term/socks/38451/">Yazmin Alanis</a>.</em></p>
+	</footer>
+
+
+	<script>
+		;(function () {
+			if (!('fonts' in document)) return;
+			document.fonts.load('1em PT Serif').then(function () {
+				document.documentElement.className += ' fonts-loaded';
+			});
+		})();
+
+		//
+		// Variables
+		//
+
+		var board = document.querySelector('#memory');
+		var matched = document.querySelector('#matched');
+		var choices = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11'];
+		var monsters = [];
+		var matches = 0;
+		var current;
+
+
+		//
+		// Methods
+		//
+
+		/**
+		 * Randomly shuffle an array
+		 * https://stackoverflow.com/a/2450976/1293256
+		 * @param  {Array} array The array to shuffle
+		 * @return {String}      The first item in the shuffled array
+		 */
+		var shuffle = function (array) {
+
+			var currentIndex = array.length;
+			var temporaryValue, randomIndex;
+
+			// While there remain elements to shuffle...
+			while (0 !== currentIndex) {
+				// Pick a remaining element...
+				randomIndex = Math.floor(Math.random() * currentIndex);
+				currentIndex -= 1;
+
+				// And swap it with the current element.
+				temporaryValue = array[currentIndex];
+				array[currentIndex] = array[randomIndex];
+				array[randomIndex] = temporaryValue;
+			}
+
+			return array;
+
+		};
+
+		var getMonsters = function () {
+
+			// Mix up our options
+			shuffle(choices);
+
+			// Get 8 options and double them
+			monsters = choices.slice(0, 8).reduce(function (arr, monster) {
+				arr.push(monster);
+				arr.push(monster);
+				return arr;
+			}, []);
+
+			// Shuffle the monsters
+			shuffle(monsters);
+
+		};
+
+		var createBoard = function () {
+			board.innerHTML = monsters.map(function (monster, index) {
+				return '<button data-card="' + index + '" aria-label="Flip card ' + index + '">&nbsp;</button>';
+			}).join('');
+		};
+
+		var startGame = function () {
+
+			// Reset count
+			matches = 0;
+			matched.textContent = '0 matched';
+
+			// Reset current
+			current = null;
+
+			// Get a shuffled mix of monsters
+			getMonsters();
+
+			// Create the gameboard
+			createBoard();
+
+		};
+
+		var flipCard = function (event) {
+
+			// Get card index
+			var index = event.target.getAttribute('data-card');
+			if (!index || event.target.classList.contains('matched')) return;
+
+			// Update card
+			event.target.classList.add('flipped');
+			event.target.setAttribute('aria-label', 'Monster ' + monsters[index]);
+			event.target.innerHTML = '<img src="monster' + monsters[index] + '.svg">';
+
+			// If there's no current card, set it
+			if (!current) {
+				current = index;
+				return;
+			}
+
+			// Otherwise, get the currently flipped card
+			var flipped = document.querySelector('[data-card="' + current + '"]');
+			if (!flipped) return;
+
+			// If card matches current, match them both
+			if (monsters[current] === monsters[index]) {
+				event.target.classList.add('matched');
+				flipped.classList.add('matched');
+				matches++;
+				matched.textContent = matches + ' matched' + (matches === 8 ? ' - you won!' : '');
+				current = null;
+				return;
+			}
+
+			// Otherwise, flip them both back over
+			current = null;
+			window.setTimeout(function () {
+				event.target.innerHTML = '&nbsp;';
+				flipped.innerHTML = '&nbsp;';
+				event.target.classList.remove('flipped');
+				flipped.classList.remove('flipped');
+				event.target.setAttribute('aria-label', 'Flip card ' + index);
+				flipped.setAttribute('aria-label', 'Flip card ' + current);
+			}, 750);
+
+		};
+
+		var playAgain = function (event) {
+			if (event.target.id !== 'play-again') return;
+			startGame();
+		};
+
+		var clickHandler = function (event) {
+			flipCard(event);
+			playAgain(event);
+		};
+
+
+		//
+		// Inits & Event Listeners
+		//
+
+		startGame();
+		document.addEventListener('click', clickHandler, false);
+
+	</script>
+
+</body>
+</html>

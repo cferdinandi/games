@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Drum Machine</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=no">
+
+	<style type="text/css">
+		body {
+			margin: 0 auto;
+			max-width: 40em;
+			width: 88%;
+		}
+
+		/**
+		 * Add box sizing to everything
+		 * @link http://www.paulirish.com/2012/box-sizing-border-box-ftw/
+		 */
+		*,
+		*:before,
+		*:after {
+		  -webkit-box-sizing: border-box;
+		          box-sizing: border-box;
+		}
+
+		.drum-machine {
+			display: grid;
+			grid-template-columns: 1fr 1fr 1fr;
+			grid-template-rows: 1fr 1fr 1fr;
+			grid-column-gap: 0.3125em;
+			grid-row-gap: 0.3125em;
+			text-align: center;
+		}
+
+		button {
+			background-color: #f7f7f7;
+			border: 1px solid #e5e5e5;
+			border-radius: 0.25em;
+			font-weight: bold;
+		}
+
+		button:focus,
+		button:hover {
+			background-color: #e5e5e5;
+		}
+
+		button:active,
+		button.active {
+			background-color: #0088cc;
+			color: #ffffff;
+		}
+
+		.drum-machine button {
+			font-size: 2em;
+			height: 20vh;
+			width: 100%;
+		}
+
+		.btn-record,
+		.btn-stop,
+		.btn-loop {
+			font-size: 1.2em;
+			padding: 0.5em 1em;
+		}
+
+		.btn-record {
+			color: #cb070e;
+		}
+
+		.btn-record.active {
+			background-color: #cb070e;
+			color: #ffffff;
+		}
+
+		.btn-stop {
+			color: #272727;
+		}
+
+		.btn-stop.active {
+			background-color: #272727;
+			color: #ffffff;
+		}
+
+		.btn-loop {
+			color: #259443;
+		}
+
+		.btn-loop.active {
+			background-color: #259443;
+			color: #ffffff;
+		}
+	</style>
+</head>
+<body>
+
+	<h1>Drum Machine</h1>
+
+	<p>
+		<button class="btn-record">Record</button>
+		<button class="btn-stop">Stop</button>
+		<button class="btn-loop">Loop</button>
+	</p>
+
+	<div class="drum-machine">
+		<div><button data-drum="0">Q</button></div>
+		<div><button data-drum="1">W</button></div>
+		<div><button data-drum="2">E</button></div>
+		<div><button data-drum="3">A</button></div>
+		<div><button data-drum="4">S</button></div>
+		<div><button data-drum="5">D</button></div>
+		<div><button data-drum="6">Z</button></div>
+		<div><button data-drum="7">X</button></div>
+		<div><button data-drum="8">C</button></div>
+	</div>
+
+	<script>
+		//
+		// Variables
+		//
+
+		var drums = ['kick1', 'kick2', 'perc1', 'snare1', 'snare2', 'clap1', 'hihat1', 'hihat2', 'ride1'];
+		var btnRecord = document.querySelector('.btn-record');
+		var btnStop = document.querySelector('.btn-stop');
+		var btnLoop = document.querySelector('.btn-loop');
+		var recording = false;
+		var drumLoop, looping, last, now, current;
+
+
+		//
+		// Methods
+		//
+
+		var getDrum = function (key) {
+			return ['q', 'w', 'e', 'a', 's', 'd', 'z', 'x', 'c'].indexOf(key);
+		};
+
+		var btnState = function (btn) {
+			if (!btn) return;
+			btn.classList.add('active');
+			setTimeout(function () {
+				btn.classList.remove('active');
+			}, 100);
+		};
+
+		var startRecording = function () {
+			drumLoop = [];
+			recording = true;
+			btnRecord.classList.add('active');
+			btnRecord.focus();
+			last = performance.now();
+		};
+
+		var record = function (drum, btn) {
+			if (!recording) return;
+			now = performance.now();
+			drumLoop.push({
+				drum: drum,
+				btn: btn,
+				gap: parseInt(now - last, 10)
+			});
+			last = now;
+		};
+
+		var stop = function (activate) {
+			recording = false;
+			if (looping) {
+				clearTimeout(looping);
+			}
+			btnRecord.classList.remove('active');
+			btnLoop.classList.remove('active');
+			if (activate) {
+				btnState(btnStop);
+				btnStop.focus();
+			}
+		};
+
+		var loop = function () {
+			play(drumLoop[current].drum, drumLoop[current].btn);
+			current = drumLoop.length - 1 === current ? 0 : current + 1;
+			looping = setTimeout(function () {
+				loop();
+			}, drumLoop[current].gap);
+		};
+
+		var startLooping = function () {
+			current = 0;
+			loop();
+			btnLoop.classList.add('active');
+			btnLoop.focus();
+		};
+
+		var play = function (drum, btn) {
+			if (!drums[drum]) return;
+			var sound = new Audio('samples/' + drums[drum] + '.mp3');
+			sound.play();
+			record(drum, btn);
+			btnState(btn);
+		};
+
+		var clickHandler = function (event) {
+
+			if (event.target.matches('.btn-record')) {
+				stop();
+				startRecording();
+				return;
+			}
+
+			if (event.target.matches('.btn-stop')) {
+				stop(true);
+				return;
+			}
+
+			if (event.target.matches('.btn-loop')) {
+				stop();
+				startLooping();
+				return;
+			}
+
+			var drum = event.target.getAttribute('data-drum');
+			if (!drum) return;
+			event.preventDefault();
+			play(drum, event.target);
+		};
+
+		var keyHandler = function (event) {
+
+			if (event.key === 'r') {
+				stop();
+				startRecording();
+				return;
+			}
+
+			if (event.key === 'Escape') {
+				stop(true);
+				return;
+			}
+
+			if (event.key === 'p') {
+				stop();
+				startLooping();
+				return;
+			}
+
+			var drum = getDrum(event.key);
+			if (drum < 0) return;
+			play(drum, document.querySelector('[data-drum="' + drum + '"]'));
+
+		};
+
+
+		//
+		// Event Handlers
+		//
+
+		document.addEventListener('click', clickHandler, false);
+		document.addEventListener('keydown', keyHandler, false);
+	</script>
+
+</body>
+</html>
